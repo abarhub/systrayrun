@@ -20,5 +20,5 @@ CMakeUserPresets.json
 
 build/
 systray_app.log
-
+justfile
 
