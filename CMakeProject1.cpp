@@ -340,7 +340,7 @@ void initMenu() {
         const char *s4 = programme.nom.c_str();
 
         size_t size = strlen(s4);
-        wchar_t* wArr = new wchar_t[size+2];
+        wchar_t* wArr = new wchar_t[size+2]();
         for (size_t i = 0; i < size; ++i) {
             wArr[i] = s4[i];
         }
