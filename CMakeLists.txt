@@ -36,6 +36,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # ── Dépendances via vcpkg ─────────────────────────────────────────────────────
 find_package(spdlog CONFIG REQUIRED)
 
+find_package(yaml-cpp CONFIG REQUIRED)
+
 #find_package(unofficial-simpleini CONFIG REQUIRED)
 
 # ── Exécutable WIN32 (pas de console) ────────────────────────────────────────
@@ -50,6 +52,7 @@ target_link_libraries(SystrayApp
         spdlog::spdlog
         #unofficial::simpleini::simpleini
         shlwapi         # Shell_NotifyIcon, etc.
+        yaml-cpp::yaml-cpp
 )
 
 # ── Options de compilation selon le compilateur ──────────────────────────────

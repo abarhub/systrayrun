@@ -11,6 +11,10 @@ cd vcpkg
 
 Ensuite, il faut déclarer la variable d'environnement `VCPKG_ROOT` pour qu'elle pointe vers le répertoire de vcpkg.
 
+Ensuite, il faut installer les dépendances déclarés dans vcpkg.json :
+```shell
+vcpkg install
+```
 
 Pour générer les fichiers de build du projet :
 ```shell

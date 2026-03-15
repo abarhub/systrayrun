@@ -43,6 +43,9 @@ int main()
 #include <iostream>
 #include <sstream>
 
+#include <yaml-cpp/yaml.h>
+
+#include <filesystem>
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 constexpr UINT WM_TRAYICON = WM_USER + 1;   // message personnalisé systray
@@ -60,6 +63,13 @@ struct SProgramme {
     std::string exec;
     std::string param;
     int noMenu;
+};
+
+struct Commande
+{
+    std::string nom;
+    std::string commande;
+    std::string parametres;
 };
 
 std::vector<SProgramme> listeProgrammes;
@@ -268,79 +278,141 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
 }
 
+namespace YAML
+{
+    template<>
+    struct convert<Commande>
+    {
+        static bool decode(const Node& node, Commande& cmd)
+        {
+            if (!node["nom"] || !node["commande"])
+                return false;
+
+            cmd.nom = node["nom"].as<std::string>();
+            cmd.commande = node["commande"].as<std::string>();
+
+            if (node["parametres"])
+                cmd.parametres = node["parametres"].as<std::string>();
+
+            return true;
+        }
+    };
+}
+
 void initMenu() {
 
     AppendMenu(g_hMenu, MF_STRING, IDM_ABOUT, L"À propos");
     AppendMenu(g_hMenu, MF_SEPARATOR, 0, nullptr);
     AppendMenu(g_hMenu, MF_STRING, IDM_QUIT, L"Quitter");
 
-    // Lire un fichier .ini
-    CSimpleIniA ini;
-    ini.SetUnicode();
-    ini.LoadFile("config.ini");
+    if (std::filesystem::exists("config.ini"))
+    {
+        // Lire un fichier .ini
+        CSimpleIniA ini;
+        ini.SetUnicode();
+        ini.LoadFile("config.ini");
 
-    const char* value = ini.GetValue("section", "key", "valeur_defaut");
-    spdlog::info("Valeur lue : {}", value);
+        const char* value = ini.GetValue("section", "key", "valeur_defaut");
+        spdlog::info("Valeur lue : {}", value);
 
-    const char* value2 = ini.GetValue("global", "liste_sections", "");
+        const char* value2 = ini.GetValue("global", "liste_sections", "");
 
-    std::string s = value2;
+        std::string s = value2;
 
-    spdlog::info("liste_sections : {}", s);
+        spdlog::info("liste_sections : {}", s);
 
-    std::vector<std::string> strings;
-    std::istringstream f(s);
-    std::string s2;
-    while (getline(f, s2, ',')) {
-        //cout << s << endl;
-        strings.push_back(s2);
-    }
+        std::vector<std::string> strings;
+        std::istringstream f(s);
+        std::string s2;
+        while (getline(f, s2, ',')) {
+            //cout << s << endl;
+            strings.push_back(s2);
+        }
 
-    //spdlog::info("strings : {}", strings);
-    spdlog::info("strings.size() : {}", strings.size());
+        //spdlog::info("strings : {}", strings);
+        spdlog::info("strings.size() : {}", strings.size());
 
-    for (std::string s3 : strings) {
+        for (std::string s3 : strings) {
 
-        spdlog::info("s3 : {}", s3);
+            spdlog::info("s3 : {}", s3);
 
-        const char* nom = ini.GetValue(s3.c_str(), "nom", "");
-        const char* exec = ini.GetValue(s3.c_str(), "exec", "");
-        const char* param = ini.GetValue(s3.c_str(), "param", "");
-        
-        spdlog::info("nom : {}", nom);
-        spdlog::info("exec : {}", exec);
-        spdlog::info("param : {}", param);
+            const char* nom = ini.GetValue(s3.c_str(), "nom", "");
+            const char* exec = ini.GetValue(s3.c_str(), "exec", "");
+            const char* param = ini.GetValue(s3.c_str(), "param", "");
 
-        std::string nom2 = nom;
-        std::string exec2 = exec;
-        std::string param2 = param;
+            spdlog::info("nom : {}", nom);
+            spdlog::info("exec : {}", exec);
+            spdlog::info("param : {}", param);
 
-        spdlog::info("nom2 : {}", nom2);
-        spdlog::info("exec2 : {}", exec2);
-        spdlog::info("param2 : {}", param2);
+            std::string nom2 = nom;
+            std::string exec2 = exec;
+            std::string param2 = param;
 
-        if (nom2.length()>0 && exec2.length()>0) {
+            spdlog::info("nom2 : {}", nom2);
+            spdlog::info("exec2 : {}", exec2);
+            spdlog::info("param2 : {}", param2);
 
-            struct SProgramme programme;
-            programme.nom = nom2;
-            programme.exec = exec2;
-            programme.param = param2;
-            programme.noMenu = 0;
+            if (nom2.length() > 0 && exec2.length() > 0) {
 
-            listeProgrammes.push_back(programme);
+                struct SProgramme programme;
+                programme.nom = nom2;
+                programme.exec = exec2;
+                programme.param = param2;
+                programme.noMenu = 0;
+
+                listeProgrammes.push_back(programme);
+            }
+
         }
 
     }
 
+    if (std::filesystem::exists("config.ini"))
+    {
+        try
+        {
+            YAML::Node config = YAML::LoadFile("config.yml");
+
+            std::vector<Commande> commandes;
+
+            for (const auto& node : config["liste"])
+            {
+                commandes.push_back(node.as<Commande>());
+            }
+
+            for (const auto& c : commandes)
+            {
+                spdlog::info("{} | {} | {}", c.nom, c.commande, c.parametres);
+
+                struct SProgramme programme;
+                programme.nom = c.nom;
+                programme.exec = c.commande;
+                programme.param = c.parametres;
+                programme.noMenu = 0;
+
+                listeProgrammes.push_back(programme);
+            }
+        }
+        catch (const YAML::BadFile& e)
+        {
+            spdlog::error("Erreur: impossible d'ouvrir le fichier YAML : {}", e.what());
+        }
+        catch (const YAML::ParserException& e)
+        {
+            spdlog::error("Erreur de syntaxe YAML: {}",e.what());
+        }
+    }
+
+
     spdlog::info("taille listeProgrammes : {}", listeProgrammes.size());
 
-    int n = IDM_QUIT+1;
+    int n = IDM_QUIT + 1;
 
     for (SProgramme& programme : listeProgrammes) {
-        const char *s4 = programme.nom.c_str();
+        const char* s4 = programme.nom.c_str();
 
         size_t size = strlen(s4);
-        wchar_t* wArr = new wchar_t[size+2]();
+        wchar_t* wArr = new wchar_t[size + 2]();
         for (size_t i = 0; i < size; ++i) {
             wArr[i] = s4[i];
         }
